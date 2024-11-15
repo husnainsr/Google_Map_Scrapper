@@ -31,6 +31,47 @@ class ShopList:
         self.dataframe().to_json(filename, orient="records")
 
     
+def get_shop_urls_and_scroll(page):
+    shop_urls = set()
+    flag = True
+    attempt = 0
+
+
+    while True:
+        # Wait for all shop elements to be present
+        try:
+            page.wait_for_selector('//*[@class="hfpxzc"]', timeout=10000)
+            shop_elements = page.locator('//*[@class="hfpxzc"]').all()
+            
+            # Get URLs from current view
+            for element in shop_elements:
+                try:
+                    url = element.get_attribute('href')
+                    if url:
+                        shop_urls.add(url)
+                except Exception as e:
+                    print(f"Error extracting URL: {str(e)}")
+                    continue
+                    
+            # Scroll the feed container
+            try:
+                feed_container = page.locator('//*[@role="feed"]')
+                feed_container.scroll_into_view_if_needed()
+            except Exception as e:
+                print(f"Error scrolling feed container: {str(e)}")
+           
+
+            if len(shop_urls) == attempt:
+                flag = False
+            attempt = len(shop_urls)
+            
+                
+        except Exception as e:
+            print(f"Error waiting for elements: {str(e)}")
+            break
+            
+    return list(shop_urls)
+
 
 def main(search_keyword_location: str, location: str, output_file: str):
     try:
@@ -53,15 +94,10 @@ def main(search_keyword_location: str, location: str, output_file: str):
                     print(f"Error performing search: {str(e)}")
                     return
 
-                try:
-                    all_shop_elements = page.locator('.Nv2PK.THOPZb.CpccDe').all()
-                    print(f"Found {len(all_shop_elements)} shops")
-                except Exception as e:
-                    print(f"Error finding shop elements: {str(e)}")
-                    return
+                all_shop_urls = get_shop_urls_and_scroll(page)
 
                 shop_list = ShopList()
-                for i, shop_element in enumerate(all_shop_elements[:10]):
+                for i, shop_element in enumerate(all_shop_urls[:10]):
                     try:
                         shop_element.click()
                         page.wait_for_timeout(10000)

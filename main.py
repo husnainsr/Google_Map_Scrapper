@@ -39,9 +39,10 @@ def get_shop_urls_and_scroll(page):
     while True:
             # Scroll the feed container
             try:
+                shop_elements = page.locator('//*[@class="hfpxzc"]').all()
+                print(len(shop_elements))
                 page.hover('//*[@role="feed"]')
                 page.mouse.wheel(0, 30000)
-                shop_elements = page.locator('//*[@class="hfpxzc"]').all()
                 for shop_element in shop_elements:
                     try:
                         url = shop_element.get_attribute("href")
@@ -68,10 +69,33 @@ def get_shop_urls_and_scroll(page):
                                 website_text = website.get_attribute("aria-label").replace("Website: ", "")
                             except:
                                 website_text = "N/A"
-                            print(name, phone_number_text, address_text, website_text)
+                            try:
+                                rating_element = page.locator('//div[contains(@class, "LBgpqf")]//div[contains(@class, "skqShb")]//div[contains(@class, "fontBodyMedium dmRWX")]//div[contains(@class, "F7nice")]//span/span[@aria-hidden="true"]')
+                                # Locate the total reviews element using XPath
+                                reviews_element = page.locator('//div[contains(@class, "LBgpqf")]//div[contains(@class, "skqShb")]//div[contains(@class, "fontBodyMedium dmRWX")]//div[contains(@class, "F7nice")]//span/span[contains(text(), "(")]')
+                                # Fetch the rating text
+                                rating_texts = rating_element.all_text_contents()
+                                if rating_texts:
+                                    rating = rating_texts[0]
+                                else:
+                                    rating = "N/A"
+                                reviews_texts = reviews_element.all_text_contents()
+                                if reviews_texts:
+                                    # Extract just the number part from the text, e.g., "(6,212)" -> "6212"
+                                    reviews = reviews_texts[0].strip("()").replace(",", "").strip()
+                                    print("Total Reviews:", reviews, "Rating:", rating)
+                                else:
+                                    reviews = "N/A"
+                                    print("Total reviews not found.")
+                            except Exception as e:
+                                print("Error:", e)
+                                rating = "N/A"
+                                reviews = "N/A"
 
+                            # print(name, phone_number_text, address_text, website_text, rating)
                         else:
                             continue
+                        
                     except Exception as e:
                         print(f"Error clicking on shop element: {str(e)}")
 

@@ -35,40 +35,59 @@ def get_shop_urls_and_scroll(page):
     shop_urls = set()
     flag = True
     attempt = 0
-
-
+    max_attempts = 3
     while True:
-        # Wait for all shop elements to be present
-        try:
-            page.wait_for_selector('//*[@class="hfpxzc"]', timeout=10000)
-            shop_elements = page.locator('//*[@class="hfpxzc"]').all()
-            
-            # Get URLs from current view
-            for element in shop_elements:
-                try:
-                    url = element.get_attribute('href')
-                    if url:
-                        shop_urls.add(url)
-                except Exception as e:
-                    print(f"Error extracting URL: {str(e)}")
-                    continue
-                    
             # Scroll the feed container
             try:
-                feed_container = page.locator('//*[@role="feed"]')
-                feed_container.scroll_into_view_if_needed()
-            except Exception as e:
-                print(f"Error scrolling feed container: {str(e)}")
-           
+                page.hover('//*[@role="feed"]')
+                page.mouse.wheel(0, 30000)
+                shop_elements = page.locator('//*[@class="hfpxzc"]').all()
+                for shop_element in shop_elements:
+                    try:
+                        url = shop_element.get_attribute("href")
+                        if url and url not in shop_urls:
+                            shop_urls.add(url)
+                            shop_element.click()
+                            page.wait_for_timeout(2000)
+                            try:
+                                name  = page.locator('//*[@class="DUwDvf lfPIob"]').inner_text()
+                            except:
+                                name = "N/A"
+                            try:
+                                phone_number = page.locator('//*[@class="CsEnBe" and contains(@aria-label, "Phone")]')
+                                phone_number_text = phone_number.get_attribute("aria-label").replace("Phone: ", "")
+                            except:
+                                phone_number_text = "N/A"
+                            try:
+                                address = page.locator('//*[@class="CsEnBe" and contains(@aria-label, "Address")]')
+                                address_text = address.get_attribute("aria-label").replace("Address: ", "")
+                            except:
+                                address_text = "N/A"
+                            try:
+                                website = page.locator('//*[@class="CsEnBe" and contains(@aria-label, "Website")]')
+                                website_text = website.get_attribute("aria-label").replace("Website: ", "")
+                            except:
+                                website_text = "N/A"
+                            print(name, phone_number_text, address_text, website_text)
 
-            if len(shop_urls) == attempt:
-                flag = False
-            attempt = len(shop_urls)
+                        else:
+                            continue
+                    except Exception as e:
+                        print(f"Error clicking on shop element: {str(e)}")
+
+                page.wait_for_timeout(1000)
+            except Exception as e:
+                attempt += 1
+                if attempt >= max_attempts:
+                    print(f"Max attempts reached. Exiting loop.")
+                    break
+                print(f"Error scrolling feed container: {str(e)}")
+
+
+
             
                 
-        except Exception as e:
-            print(f"Error waiting for elements: {str(e)}")
-            break
+    
             
     return list(shop_urls)
 
@@ -84,7 +103,7 @@ def main(search_keyword_location: str, location: str, output_file: str):
                 except Exception as e:
                     print(f"Error accessing Google Maps: {str(e)}")
                     return
-                
+
                 try:
                     page.wait_for_timeout(10000)
                     search_box = page.locator('//*[@id="searchboxinput"]')
@@ -96,60 +115,60 @@ def main(search_keyword_location: str, location: str, output_file: str):
 
                 all_shop_urls = get_shop_urls_and_scroll(page)
 
-                shop_list = ShopList()
-                for i, shop_element in enumerate(all_shop_urls[:10]):
-                    try:
-                        shop_element.click()
-                        page.wait_for_timeout(10000)
+                # shop_list = ShopList()
+                # for i, shop_element in enumerate(all_shop_urls[:10]):
+                #     try:
+                #         shop_element.click()
+                #         page.wait_for_timeout(10000)
 
-                        name_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[2]/div/div[1]/div[1]/h1'
-                        address_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[7]/div[3]/button/div/div[2]'
-                        website_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[7]/div[6]/a/div'
-                        phonenumber_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[7]/div[7]/button/div'
-                        timing_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[7]/div[4]/div[2]'
+                #         name_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[2]/div/div[1]/div[1]/h1'
+                #         address_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[7]/div[3]/button/div/div[2]'
+                #         website_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[7]/div[6]/a/div'
+                #         phonenumber_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[7]/div[7]/button/div'
+                #         timing_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[7]/div[4]/div[2]'
 
-                        shop_info = ShopInformation()
+                #         shop_info = ShopInformation()
 
-                        try:
-                            shop_info.name = page.locator(name_xpath).inner_text()
-                        except:
-                            shop_info.name = "Name not found"
+                #         try:
+                #             shop_info.name = page.locator(name_xpath).inner_text()
+                #         except:
+                #             shop_info.name = "Name not found"
                             
-                        try:
-                            shop_info.address = page.locator(address_xpath).inner_text()
-                        except:
-                            shop_info.address = "Address not found"
+                #         try:
+                #             shop_info.address = page.locator(address_xpath).inner_text()
+                #         except:
+                #             shop_info.address = "Address not found"
                             
-                        try:
-                            shop_info.website = page.locator(website_xpath).inner_text()
-                        except:
-                            shop_info.website = "Website not found"
+                #         try:
+                #             shop_info.website = page.locator(website_xpath).inner_text()
+                #         except:
+                #             shop_info.website = "Website not found"
                             
-                        try:
-                            shop_info.phonenumber = page.locator(phonenumber_xpath).inner_text()
-                        except:
-                            shop_info.phonenumber = "Phone number not found"
+                #         try:
+                #             shop_info.phonenumber = page.locator(phonenumber_xpath).inner_text()
+                #         except:
+                #             shop_info.phonenumber = "Phone number not found"
                             
-                        try:
-                            shop_info.timing = page.locator(timing_xpath).inner_text()
-                        except:
-                            shop_info.timing = "Timing not found"
+                #         try:
+                #             shop_info.timing = page.locator(timing_xpath).inner_text()
+                #         except:
+                #             shop_info.timing = "Timing not found"
 
-                        shop_list.shopList.append(shop_info)
-                        print(f"Successfully processed shop {i+1}/10")
+                #         shop_list.shopList.append(shop_info)
+                #         print(f"Successfully processed shop {i+1}/10")
                         
-                    except Exception as e:
-                        print(f"Error processing shop {i+1}: {str(e)}")
-                        continue
+                #     except Exception as e:
+                #         print(f"Error processing shop {i+1}: {str(e)}")
+                #         continue
 
-                try:
-                    shop_list.save_to_csv(output_file)
-                    print(f"Successfully saved data to {output_file}")
-                except Exception as e:
-                    print(f"Error saving to CSV: {str(e)}")
-                    return
+                # try:
+                #     shop_list.save_to_csv(output_file)
+                #     print(f"Successfully saved data to {output_file}")
+                # except Exception as e:
+                #     print(f"Error saving to CSV: {str(e)}")
+                #     return
                     
-                time.sleep(10)
+                # time.sleep(10)
                 
             except Exception as e:
                 print(f"Browser error: {str(e)}")

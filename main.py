@@ -5,31 +5,6 @@ import argparse
 import time
 
 
-@dataclass
-class ShopInformation:
-    name: str = field(default="")
-    address: str = field(default="")
-    website: str = field(default="")
-    phonenumber: str = field(default="")
-    shopLink: str = field(default="")
-    bookingLink: str = field(default="")
-    timing: str = field(default="")
-
-@dataclass
-class ShopList:
-    shopList: list[ShopInformation] = field(default_factory=list)
-    def dataframe(self):
-        return pd.json_normalize([asdict(shop) for shop in self.shopList], sep="")
-
-    def save_to_excel(self, filename: str):
-        self.dataframe().to_excel(filename, index=False)
-    
-    def save_to_csv(self, filename: str):
-        self.dataframe().to_csv(filename, index=False)
-        
-    def save_to_json(self, filename: str):
-        self.dataframe().to_json(filename, orient="records")
-
     
 def get_shop_urls_and_scroll(page):
     shop_urls = set()
@@ -39,10 +14,12 @@ def get_shop_urls_and_scroll(page):
     while True:
             # Scroll the feed container
             try:
+                print("Scrolling")
                 shop_elements = page.locator('//*[@class="hfpxzc"]').all()
                 print(len(shop_elements))
                 page.hover('//*[@role="feed"]')
                 page.mouse.wheel(0, 30000)
+                shop_elements[0].click()
                 for shop_element in shop_elements:
                     try:
                         url = shop_element.get_attribute("href")
@@ -92,6 +69,51 @@ def get_shop_urls_and_scroll(page):
                                 rating = "N/A"
                                 reviews = "N/A"
 
+                            try:
+    # Locate the timing element using XPath
+                                timings_element = page.locator('//div[contains(@class, "OqCZI fontBodyMedium WVXvdc")]//div[@aria-label]')
+                                
+                                # Fetch the text content of the timings
+                                timings_texts = timings_element.all_text_contents()
+                                if timings_texts:
+                                    # Clean and parse the timing string
+                                    timing_str = timings_texts[0].replace("Suggest new hours", "")
+                                    days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
+                                    timing_dict = {}
+                                    
+                                    for day in days:
+                                        try:
+                                            # Find the start index of the day
+                                            start_idx = timing_str.find(day)
+                                            if start_idx != -1:
+                                                # Find the start of the next day or end of string
+                                                next_day_idx = len(timing_str)
+                                                for next_day in days:
+                                                    next_start = timing_str.find(next_day, start_idx + len(day))
+                                                    if next_start != -1 and next_start < next_day_idx:
+                                                        next_day_idx = next_start
+                                                
+                                                # Extract and clean the timing for the current day
+                                                time_slot = timing_str[start_idx + len(day):next_day_idx].strip()
+                                                # Clean up the time slot string by removing special characters
+                                                time_slot = time_slot.encode('ascii', 'ignore').decode().strip()
+                                                timing_dict[day] = time_slot if time_slot else "Closed"
+                                            else:
+                                                timing_dict[day] = "N/A"
+                                        except Exception as e:
+                                            timing_dict[day] = "N/A"
+                                            print(f"Error parsing {day}: {str(e)}")
+                                    
+                                    timings = timing_dict
+                                    print("Timings:", timings)
+                                else:
+                                    timings = {day: "N/A" for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]}
+                                    print("Timings not found.")
+                            except Exception as e:
+                                print("Error:", e)
+                                timings = {day: "N/A" for day in ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]}
+
+
                             # print(name, phone_number_text, address_text, website_text, rating)
                         else:
                             continue
@@ -138,61 +160,6 @@ def main(search_keyword_location: str, location: str, output_file: str):
                     return
 
                 all_shop_urls = get_shop_urls_and_scroll(page)
-
-                # shop_list = ShopList()
-                # for i, shop_element in enumerate(all_shop_urls[:10]):
-                #     try:
-                #         shop_element.click()
-                #         page.wait_for_timeout(10000)
-
-                #         name_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[2]/div/div[1]/div[1]/h1'
-                #         address_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[7]/div[3]/button/div/div[2]'
-                #         website_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[7]/div[6]/a/div'
-                #         phonenumber_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[7]/div[7]/button/div'
-                #         timing_xpath='//*[@id="QA0Szd"]/div/div/div[1]/div[3]/div/div[1]/div/div/div[2]/div[7]/div[4]/div[2]'
-
-                #         shop_info = ShopInformation()
-
-                #         try:
-                #             shop_info.name = page.locator(name_xpath).inner_text()
-                #         except:
-                #             shop_info.name = "Name not found"
-                            
-                #         try:
-                #             shop_info.address = page.locator(address_xpath).inner_text()
-                #         except:
-                #             shop_info.address = "Address not found"
-                            
-                #         try:
-                #             shop_info.website = page.locator(website_xpath).inner_text()
-                #         except:
-                #             shop_info.website = "Website not found"
-                            
-                #         try:
-                #             shop_info.phonenumber = page.locator(phonenumber_xpath).inner_text()
-                #         except:
-                #             shop_info.phonenumber = "Phone number not found"
-                            
-                #         try:
-                #             shop_info.timing = page.locator(timing_xpath).inner_text()
-                #         except:
-                #             shop_info.timing = "Timing not found"
-
-                #         shop_list.shopList.append(shop_info)
-                #         print(f"Successfully processed shop {i+1}/10")
-                        
-                #     except Exception as e:
-                #         print(f"Error processing shop {i+1}: {str(e)}")
-                #         continue
-
-                # try:
-                #     shop_list.save_to_csv(output_file)
-                #     print(f"Successfully saved data to {output_file}")
-                # except Exception as e:
-                #     print(f"Error saving to CSV: {str(e)}")
-                #     return
-                    
-                # time.sleep(10)
                 
             except Exception as e:
                 print(f"Browser error: {str(e)}")
@@ -207,24 +174,6 @@ def main(search_keyword_location: str, location: str, output_file: str):
 
 
 if __name__ == "__main__":
-    # parser = argparse.ArgumentParser(description="Scrape shop information from Google Maps")
-    # parser.add_argument("-s","--search", type=str, help="The search keywords to use for the search")
-    # parser.add_argument("-l","--location", type=str, help="The location to search for the shop")
-    # parser.add_argument("-o","--output", type=str, help="The output file name")
-    # args = parser.parse_args()
-
-
-    # if not args.search or not args.location or not args.output:
-    #     parser.error("All arguments are required")
-    # else:
-    #     search_keywords = args.search
-    #     location = args.location
-    #     output_file = args.output
-        
-    #     search_keyword_location = f'{search_keywords}  {location}'
-
-    #     print(f"Searching for {search_keyword_location}")
-
         search_keyword_location = "hair salon in singapore"
         location = "singapore"
         output_file = "shop_list.csv"
